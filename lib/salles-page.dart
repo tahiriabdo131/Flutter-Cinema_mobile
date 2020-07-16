@@ -19,11 +19,13 @@ class _SallesPageState extends State<SallesPage> {
   List<int> reservedTicket = new List();
   Map<String, bool> ticketStates = {}; //pressed or not
 
-   final nameController = TextEditingController();
-   final codeController = TextEditingController();
-   final nbTicketController = TextEditingController();
+  final nameController = TextEditingController();
+  final codeController = TextEditingController();
+  final nbTicketController = TextEditingController();
+   
+  String currentProjectionID = "";
 
-
+  
   @override
   void dispose() {
     // Clean up the controller when the widget is disposed.
@@ -56,6 +58,7 @@ class _SallesPageState extends State<SallesPage> {
                         child: Text(this.listSalles[index]['name'], style: TextStyle(color: Colors.white)),
                         onPressed: (){
                           loadProjections(this.listSalles[index]);
+                          unpressTickets();
                         },
                       ),
                     ),
@@ -75,6 +78,7 @@ class _SallesPageState extends State<SallesPage> {
                               child: Text("${projection['seance']['heureDebut']}   (${projection['film']['duree']} H/ ${projection['prix']} DH)", style: TextStyle(color: Colors.white,fontSize: 12)),
                               onPressed: (){
                                 loadTickets(projection, this.listSalles[index]);
+                                unpressTickets();
                               },
                             );
                           })
@@ -113,6 +117,7 @@ class _SallesPageState extends State<SallesPage> {
                       child: TextField(
                         controller: nbTicketController,
                         decoration: InputDecoration(hintText: 'Nombre de tickets'),
+                        onChanged: (text) => unpressTickets(),
                       ),
                     ),
                     Container(
@@ -122,11 +127,11 @@ class _SallesPageState extends State<SallesPage> {
                         color: Colors.blue,
                         child: Text("Réserver les places", style: TextStyle(color:Colors.white),),
                         onPressed: (){
-                          //vous devez envoyer une requete pour modifier le champs reservee des tickets selectionner vers true
-                          reserveTickets(context);
+                          //Reservation tickets
                           setState(() {
-                            
+                            this.currentProjectionID = "${this.listSalles[index]['currentProjection']['id']}";
                           });
+                          reserveTickets(context);
                         },
                       ),
                     ),
@@ -157,7 +162,18 @@ class _SallesPageState extends State<SallesPage> {
                           ),
                         );
                       } 
-                      else return Container();
+                      else return Container(
+                          width: 50,
+                          padding: EdgeInsets.all(2),
+                          child: RaisedButton(
+                            color:  Colors.grey,
+                            child: Text("${ticket['place']['numero']}",
+                              style: TextStyle(color: Colors.white, fontSize: 12),
+                            ),
+                            onPressed: (){
+                            },
+                          ),
+                        );
                       
                     })
                     
@@ -178,26 +194,99 @@ class _SallesPageState extends State<SallesPage> {
     loadSalles();
   }
 
-
+  void unpressTickets(){
+    setState(() {
+      ticketStates.forEach((key, value) {
+        ticketStates[key] = false;
+      });
+    });
+  }
+  
   void reserveTickets(context){
-    List<String> ids = ticketStates.keys.where((k) => ticketStates[k] == true).toList();
+    if(!ticketStates.containsValue(true) && nbTicketController.text == "")
+    {
+      showDialog(
+        context: context,
+        builder: (_) => new AlertDialog(
+          title: new Text("Veuillez selectionner les places à reserver !"),
+          actions: <Widget>[
+            FlatButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            )
+          ],
+        )
+      );
+    }
+    else if (ticketStates.containsValue(true) && nbTicketController.text == "")
+    {
+      // IF BUTTON ARE PRESSED = MANUAL 
+      reseveTicketManually(context);
+    }
+    else
+    {
+      // IF NB TICKETS FIELD IS NOT EMPTY  = AUTO 
+      reserveTicketsAuto(context);
+    }
     
-    print(ids);
+  }
+
+  reseveTicketManually(context){
+    // RESERVATION MANUELLE
+      List<String> ids = ticketStates.keys.where((k) => ticketStates[k] == true).toList();
+      
+      print(ids);
+      print("name :" + nameController.text);
+      print("code :" + codeController.text);
+      
+      TicketService.updateTicket(ids, nameController.text, codeController.text)
+      .then(
+        (result) {
+          print(result);
+        }
+      );
+
+      showDialog(
+        context: context,
+        builder: (_) => new AlertDialog(
+          title: new Text("La reservion est bien éffectuée !"),
+          actions: <Widget>[
+            FlatButton(
+              child: Text('Fermer'),
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(
+                  builder: (context)=>new SallesPage(widget.cinema) ));
+              },
+            )
+          ],
+        )
+      );
+
+  }
+  
+  void reserveTicketsAuto(context){
+
+    // RESERVATION AUTOMATIQUE
+    unpressTickets();
     print("name :" + nameController.text);
     print("code :" + codeController.text);
     print("nb Tickets :" + nbTicketController.text);
+    print("P :" + currentProjectionID);
+
     
-    TicketService.updateTicket(ids, nameController.text, codeController.text)
-    .then(
-      (result) {
-        print(result);
-      }
-    );
+    TicketService.updateTicketAuto(nameController.text, codeController.text, nbTicketController.text, currentProjectionID)
+      .then(
+        (result) {
+          print(result);
+        }
+      );
 
     showDialog(
       context: context,
       builder: (_) => new AlertDialog(
-        title: new Text("La reservion est bien éffectuée !"),
+        title: new Text("La reservion de ${nbTicketController.text} tickets est bien éffectuée !"),
         actions: <Widget>[
           FlatButton(
             child: Text('Fermer'),
@@ -209,6 +298,7 @@ class _SallesPageState extends State<SallesPage> {
         ],
       )
     );
+
   }
   void loadSalles(){
     String url = this.widget.cinema['_links']['salles']['href'];

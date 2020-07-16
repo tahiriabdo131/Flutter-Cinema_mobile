@@ -30,5 +30,28 @@ class TicketService {
 
   }
 
+  static Future<String> updateTicketAuto(String nomClient, String codePayement, String nbTickets, String projectionId) async {
+
+      print("Service has started ..............");
+      
+        try {
+          var map = new Map<String, dynamic>();
+          map["action"] = "UPDATE_TICKET_AUTO";
+          map["nb_tickets"] = nbTickets;
+          map["code_payement"] = codePayement;
+          map["nom_client"] = nomClient;
+          map["projection_id"] = projectionId;
+          final response = await http.post(ROOT, body: map);
+          if(response.statusCode == 200){
+            print("update Ticket >> Response:: ${response.body}");
+            return response.body;
+          }else return "ERROR";
+          
+        } catch (e) {
+          return 'error : '+ e.toString();
+        }
+
+  }
+
  
 }
