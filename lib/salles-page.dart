@@ -1,3 +1,4 @@
+import 'package:cinema_mobile_app/services/ticket-service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:http/http.dart' as http;
@@ -15,6 +16,22 @@ class SallesPage extends StatefulWidget{
 
 class _SallesPageState extends State<SallesPage> {
   List<dynamic> listSalles;
+  List<int> reservedTicket = new List();
+  Map<String, bool> ticketStates = {}; //pressed or not
+
+   final nameController = TextEditingController();
+   final codeController = TextEditingController();
+   final nbTicketController = TextEditingController();
+
+
+  @override
+  void dispose() {
+    // Clean up the controller when the widget is disposed.
+    nameController.dispose();
+    codeController.dispose();
+    nbTicketController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context){
@@ -80,18 +97,21 @@ class _SallesPageState extends State<SallesPage> {
                     Container(
                       padding: EdgeInsets.fromLTRB(6, 2, 6, 3),
                       child: TextField(
+                        controller: nameController,
                         decoration: InputDecoration(hintText: 'Your Name'),
                       ),
                     ),
                     Container(
                       padding: EdgeInsets.fromLTRB(6, 2, 6, 3),
                       child: TextField(
+                        controller: codeController,
                         decoration: InputDecoration(hintText: 'Code Payement'),
                       ),
                     ),
                     Container(
                       padding: EdgeInsets.fromLTRB(6, 2, 6, 3),
                       child: TextField(
+                        controller: nbTicketController,
                         decoration: InputDecoration(hintText: 'Nombre de tickets'),
                       ),
                     ),
@@ -103,25 +123,44 @@ class _SallesPageState extends State<SallesPage> {
                         child: Text("Réserver les places", style: TextStyle(color:Colors.white),),
                         onPressed: (){
                           //vous devez envoyer une requete pour modifier le champs reservee des tickets selectionner vers true
+                          reserveTickets(context);
+                          setState(() {
+                            
+                          });
                         },
                       ),
                     ),
                     Wrap(children: <Widget>[
                     ...this.listSalles[index]['currentProjection']['listTickets'].map((ticket){
-                    if(ticket['reserve']==false)
-                      return Container(
-                        width: 50,
-                        padding: EdgeInsets.all(2),
-                        child: RaisedButton(
-                          color: Color.fromRGBO(73, 51, 61, 1),
-                          child: Text("${ticket['place']['numero']}",
-                            style: TextStyle(color: Colors.white, fontSize: 12),
+
+                      String ticketId = "${ticket['id']}";
+                      if(ticket['reserve']==false){
+                        if( ! ticketStates.containsKey(ticketId)){                          
+                          ticketStates[ticketId] = false;
+                        }
+                        
+                        return Container(
+                          width: 50,
+                          padding: EdgeInsets.all(2),
+                          child: RaisedButton(
+                            color: !ticketStates[ticketId] ? Color.fromRGBO(73, 51, 61, 1) : Colors.green,
+                            child: Text("${ticket['place']['numero']}",
+                              style: TextStyle(color: Colors.white, fontSize: 12),
+                            ),
+                            onPressed: (){
+                              setState(() {
+                                ticketStates[ticketId] = ! ticketStates[ticketId];
+                                
+                              });
+                              
+                            },
                           ),
-                          onPressed: (){},
-                        ),
-                      );
+                        );
+                      } 
                       else return Container();
+                      
                     })
+                    
                   ],)
                   ],)
                   ],
@@ -139,6 +178,38 @@ class _SallesPageState extends State<SallesPage> {
     loadSalles();
   }
 
+
+  void reserveTickets(context){
+    List<String> ids = ticketStates.keys.where((k) => ticketStates[k] == true).toList();
+    
+    print(ids);
+    print("name :" + nameController.text);
+    print("code :" + codeController.text);
+    print("nb Tickets :" + nbTicketController.text);
+    
+    TicketService.updateTicket(ids, nameController.text, codeController.text)
+    .then(
+      (result) {
+        print(result);
+      }
+    );
+
+    showDialog(
+      context: context,
+      builder: (_) => new AlertDialog(
+        title: new Text("La reservion est bien éffectuée !"),
+        actions: <Widget>[
+          FlatButton(
+            child: Text('Fermer'),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(
+                builder: (context)=>new SallesPage(widget.cinema) ));
+            },
+          )
+        ],
+      )
+    );
+  }
   void loadSalles(){
     String url = this.widget.cinema['_links']['salles']['href'];
     http.get(url)
