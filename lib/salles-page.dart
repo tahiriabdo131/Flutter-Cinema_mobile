@@ -110,6 +110,7 @@ class _SallesPageState extends State<SallesPage> {
                       child: TextField(
                         controller: codeController,
                         decoration: InputDecoration(hintText: 'Code Payement'),
+                        keyboardType: TextInputType.number
                       ),
                     ),
                     Container(
@@ -117,6 +118,7 @@ class _SallesPageState extends State<SallesPage> {
                       child: TextField(
                         controller: nbTicketController,
                         decoration: InputDecoration(hintText: 'Nombre de tickets'),
+                        keyboardType: TextInputType.number,
                         onChanged: (text) => unpressTickets(),
                       ),
                     ),
@@ -202,23 +204,19 @@ class _SallesPageState extends State<SallesPage> {
     });
   }
   
+  //RESERVATION TICKETS
   void reserveTickets(context){
+
+    //VERIFICATION DES CHAMPS OBLIGATOIRES 
+    if(!validFields()){
+      print("not valid");
+      alertRequiredFields();
+      return;
+    }
+
     if(!ticketStates.containsValue(true) && nbTicketController.text == "")
     {
-      showDialog(
-        context: context,
-        builder: (_) => new AlertDialog(
-          title: new Text("Veuillez selectionner les places à reserver !"),
-          actions: <Widget>[
-            FlatButton(
-              child: Text('OK'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            )
-          ],
-        )
-      );
+      alertChoosePlace();
     }
     else if (ticketStates.containsValue(true) && nbTicketController.text == "")
     {
@@ -231,6 +229,50 @@ class _SallesPageState extends State<SallesPage> {
       reserveTicketsAuto(context);
     }
     
+  }
+
+  void alertChoosePlace(){
+    //ALERT
+    showDialog(
+      context: context,
+      builder: (_) => new AlertDialog(
+        title: new Text("Veuillez selectionner les places à reserver !"),
+        actions: <Widget>[
+          FlatButton(
+            child: Text('OK'),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          )
+        ],
+      )
+    );
+  }
+
+  bool validFields(){
+   
+    if(nameController.text == "" || codeController.text == ""){
+      return false;
+    }
+    return true;
+  }
+
+  void alertRequiredFields(){
+    //ALERT
+    showDialog(
+      context: context,
+      builder: (_) => new AlertDialog(
+        title: new Text("Les champs : Nom & Code paiement sont obligatoirs !"),
+        actions: <Widget>[
+          FlatButton(
+            child: Text('OK'),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          )
+        ],
+      )
+    );
   }
 
   reseveTicketManually(context){
@@ -349,6 +391,8 @@ class _SallesPageState extends State<SallesPage> {
     }
     return nombre;
  }
+
+ 
 
 
 }
